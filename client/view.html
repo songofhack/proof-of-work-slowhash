@@ -1,0 +1,57 @@
+<!doctype html>
+<html ng-app="app">
+<head>
+	<meta charset="utf-8" />
+	<title>用户列表</title>
+	<script src="http://apps.bdimg.com/libs/angular.js/1.4.0-beta.4/angular.min.js"></script>
+	<script>
+		angular.module('app', [])
+
+		.controller('ctrl', function($http, $scope) {
+			$http.get('record.json').then(function(e) {
+				console.log('got:', e.data);
+				$scope.records = e.data;
+			}, function(e) {
+				console.warn('fail:', e);
+			});
+
+			console.log('pulling ...');
+		});
+	</script>
+	<style>
+		table {
+			border-collapse: collapse;
+			font-family: Monospace;
+			font-size: 12px;
+		}
+		td {
+			padding: 2px;
+		}
+	</style>
+</head>
+<body>
+	<p>数据都在这里，试试能爆出几个密码：）</p>
+	<table ng-controller="ctrl" border="1">
+		<tr>
+			<td width="130">用户名</td>
+			<td width="250">MD5(密码 + Salt) * N</td>
+			<td width="80">Salt</td>
+			<td width="80">N (百万)</td>
+			<td width="150">最后登录时间</td>
+			<td width="100">最后登录地址</td>
+			<td width="60">登录成功</td>
+			<td width="60">登录失败</td>
+		</tr>
+		<tr ng-repeat="(k,v) in records">
+			<td>{{k}}</td>
+			<td>{{v.pwd}}</td>
+			<td>{{v.salt}}</td>
+			<td>{{v.turn}}</td>
+			<td>{{v.last_time| date : 'yyyy-MM-dd HH:mm:ss'}}</td>
+			<td>{{v.last_addr}}</td>
+			<td>{{v.login_ok}}</td>
+			<td>{{v.login_fail}}</td>
+		</tr>
+	</table>
+</body>
+</html>

@@ -1,0 +1,178 @@
+<!doctype html>
+<html>
+<head>
+	<meta charset="utf-8" />
+	<title>注册</title>
+	<script src="//lib.sinaapp.com/js/jquery/1.9.1/jquery-1.9.1.min.js"></script>
+	<script src="md5.js"></script>
+	<style>
+		.warn_user_ok, .warn_user_bad {
+			font-size: 12px;
+			color: green;
+			display: none;
+		}
+		.warn_user_bad {
+			color: red;
+		}
+	</style>
+</head>
+<body>
+	<form id="form_reg">
+		<h1>注册页面</h1>
+		<div>
+			用户: <input name="user" id="txt_user" type="text" maxlength="16" />
+			<span class="warn_user_ok">可用</span>
+			<span class="warn_user_bad">已被注册</span>
+		</div>
+		<div>
+			密码: <input name="pwd" id="txt_pwd" type="password" />
+		</div>
+		<div>
+			强度: 
+			<select id="sel_time">
+				<option value="1000">1 秒</option>
+				<option value="2000" selected>2 秒</option>
+				<option value="3000">3 秒</option>
+				<option value="5000">5 秒</option>
+				<option value="10000">10 秒</option>
+				<option value="20000">20 秒</option>
+				<option value="30000">30 秒</option>
+				<option value="60000">60 秒</option>
+			</select>
+		</div>
+		<div>
+			<button id="btn_submit" type="submit" disabled>注册</button>
+		</div>
+		<img id="progbar">
+	</form>
+
+	<script src="slowhash.js"></script>
+	<script>
+	//
+	// 用户名检测
+	//
+	function checkUser(user) {
+		$.ajax({
+			url: 'ajax_checkname',
+			data: {
+				'user': user
+			},
+			success: function(data) {
+				var curr = $('#txt_user').val();
+				if (curr != user) {
+					return;
+				}
+				if (data == 'ok') {
+					$('.warn_user_ok').show();
+					$('.warn_user_bad').hide();
+					$('#btn_submit').prop('disabled', false);
+				} else {
+					$('.warn_user_ok').hide();
+					$('.warn_user_bad').show();
+					$('#btn_submit').prop('disabled', true);
+				}
+			}
+		});
+	}
+
+	$('#txt_user').blur(function() {
+		if (this.value) {
+			checkUser(this.value);
+			$('#btn_submit').prop('disabled', true);
+		}
+	});
+
+	//
+	// 注册提交
+	//
+	function registry(param) {
+		$.ajax({
+			url: 'ajax_reg',
+			data: param,
+			success: function(data) {
+				switch (data) {
+				case 'ok':
+					alert('注册成功');
+					return;
+				case 'registered':
+					alert('该用户已被注册');
+					break;
+				default:
+					alert(data);
+					break;
+				}
+			},
+			error: function() {
+				alert('网络错误');
+			},
+			complete: function() {
+				unlockUI();
+			}
+		});
+	}
+
+	function lockUI() {
+		$('#txt_user').prop('readOnly', true);
+		$('#txt_pwd').prop('readOnly', true);
+		$('#btn_submit').prop('disabled', true);
+	}
+	function unlockUI() {
+		$('#btn_submit').prop('disabled', false);
+		$('#txt_user').prop('readOnly', false);
+		$('#txt_pwd').prop('readOnly', false);
+	}
+
+
+
+	function randStr() {
+		var rand = Math.random() * 0xffffffff >>> 0;
+		return rand.toString(36);
+	}
+	function genSalt() {
+		return ('00000000' + randStr() + randStr()).slice(-8);
+	}
+
+
+	$('#form_reg').submit(function(e) {
+		e.preventDefault();
+
+		var pwd = $('#txt_pwd').val();
+		if (!pwd) {
+			$('#txt_pwd').focus();
+			return;
+		}
+
+		lockUI();
+
+		// 加密时间
+		// 该时间短内反复 Hash。回调中 data.turn 指示 Hash 次数
+		var time = +$('#sel_time').val();
+
+		// salt 由前端提供，并且可随时更换
+		var salt = genSalt();
+
+		console.log('正在计算 MD5(%s . %s) 重复 %sms', pwd, salt, time);
+
+		// 输入固定 16 字节
+		// 方便反复 Hash 的优化
+		var input = md5(pwd + salt);
+
+		slowhash(input, time, null, function(data) {
+			console.log('重复 %sM 次，结果 %s', data.turn, data.result);
+			$('#progbar').hide();
+
+			registry({
+				'user': $('#txt_user').val(),
+				'pwd': data.result,
+				'turn': data.turn,
+				'salt': salt
+			});
+		});
+
+		$('#progbar').prop('src', 'prog.gif').show();
+	});
+
+	$('#txt_user').focus();
+	</script>
+</body>
+</html>

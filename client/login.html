@@ -1,0 +1,161 @@
+<!doctype html>
+<html>
+<head>
+	<meta charset="utf-8" />
+	<title>登录</title>
+	<script src="//lib.sinaapp.com/js/jquery/1.9.1/jquery-1.9.1.min.js"></script>
+	<script src="md5.js"></script>
+	<style>
+		.warn_user_bad {
+			font-size: 12px;
+			color: red;
+			display: none;
+		}
+	</style>
+</head>
+<body>
+	<form id="form_login">
+		<h1>登陆页面</h1>
+		<div>
+			用户: <input name="user" id="txt_user" type="text" maxlength="16" />
+			<span class="warn_user_bad">该用户不存在</span>
+		</div>
+		<div>
+			密码: <input name="pwd" id="txt_pwd" type="password" />
+		</div>
+		<div>
+			<button id="btnSubmit" type="submit" disabled>登陆</button>
+		</div>
+		<img id="progbar">
+	</form>
+
+	<script src="slowhash.js"></script>
+	<script>
+	var powParam;
+
+	//
+	// 获取登陆参数
+	//
+	function getInfo(user) {
+		$.ajax({
+			url: 'ajax_getinfo',
+			dataType: 'json',
+			data: {
+				'user': user
+			},
+			success: function(data) {
+				var curr = $('#txt_user').val();
+				if (curr != user) {
+					return;
+				}
+
+				if (!data.success) {
+					if (data.reason == 'unregistered') {
+						$('.warn_user_bad').show();
+						console.warn('不存在用户:', user);
+					} else {
+						alert(data.reason);
+					}
+					return;
+				}
+
+				powParam = data;
+				console.log('登录参数: ', powParam);
+				$('#btnSubmit').prop('disabled', false);
+			}
+		});
+
+		$('.warn_user_bad').hide();
+		console.log('获取用户 %s 的登录参数...', user);
+	}
+
+	$('#txt_user').blur(function() {
+		if (this.readOnly) return;
+		if (this.value) {
+			getInfo(this.value);
+		}
+	});
+
+	//
+	// 登陆提交
+	//
+	function login(param) {
+		$.ajax({
+			url: 'ajax_login',
+			data: param,
+			success: function(data) {
+				if (!data.success) {
+					if (data.reason == 'incorrect') {
+						alert('用户名或密码错误');
+					} else {
+						alert(data.reason);
+					}
+					return;
+				}
+				alert('登陆成功');
+				location.href = '/';
+			},
+			error: function() {
+				alert('网络错误');
+			},
+			complete: function() {
+				unlockUI();
+			}
+		});
+	}
+
+	function lockUI() {
+		$('#txt_user').prop('readOnly', true);
+		$('#txt_pwd').prop('readOnly', true);
+		$('#btn_submit').prop('disabled', true);
+	}
+	function unlockUI() {
+		$('#btn_submit').prop('disabled', false);
+		$('#txt_user').prop('readOnly', false);
+		$('#txt_pwd').prop('readOnly', false);
+	}
+
+
+
+	$('#form_login').submit(function(e) {
+		e.preventDefault();
+
+		// check
+		var user = $('#txt_user').val();
+		if (!user) {
+			$('#txt_user').focus();
+			return;
+		}
+		var pwd = $('#txt_pwd').val();
+		if (!pwd) {
+			$('#txt_pwd').focus();
+			return;
+		}
+
+		lockUI();
+
+		// submiting ...
+		console.log('MD5(%s . %s) 重复 %sM 次', pwd, powParam.salt, powParam.turn);
+
+		// 输入固定 16 字节
+		var input = md5(pwd + powParam.salt);
+		var t = +new Date();
+
+		slowhash(input, null, powParam.turn, function(data) {
+			var elapse = new Date() - t;
+			console.log('结果: %s，用时: %sms', data.result, elapse);
+			$('#progbar').hide();
+
+			login({
+				'user': $('#txt_user').val(),
+				'pwd': data.result
+			});
+		});
+
+		$('#progbar').prop('src', 'prog.gif').show();
+	});
+
+	$('#txt_user').focus();
+	</script>
+</body>
+</html>
