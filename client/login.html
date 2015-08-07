@@ -24,19 +24,22 @@
 			密码: <input name="pwd" id="txt_pwd" type="password" />
 		</div>
 		<div>
-			<button id="btnSubmit" type="submit" disabled>登陆</button>
+			<button id="btn_submit" type="submit" disabled>登陆</button>
 		</div>
 		<img id="progbar">
 	</form>
 
 	<script src="slowhash.js"></script>
 	<script>
+	var powUser;
 	var powParam;
 
 	//
 	// 获取登陆参数
 	//
 	function getInfo(user) {
+		lockBtn(true);
+
 		$.ajax({
 			url: 'ajax_getinfo',
 			dataType: 'json',
@@ -52,6 +55,7 @@
 				if (!data.success) {
 					if (data.reason == 'unregistered') {
 						$('.warn_user_bad').show();
+						lockBtn(true);
 						console.warn('不存在用户:', user);
 					} else {
 						alert(data.reason);
@@ -59,9 +63,10 @@
 					return;
 				}
 
+				powUser = user;
 				powParam = data;
 				console.log('登录参数: ', powParam);
-				$('#btnSubmit').prop('disabled', false);
+				lockBtn(false);
 			}
 		});
 
@@ -86,7 +91,8 @@
 			success: function(data) {
 				if (!data.success) {
 					if (data.reason == 'incorrect') {
-						alert('用户名或密码错误');
+						alert('密码错误');
+						$('#txt_pwd').focus();
 					} else {
 						alert(data.reason);
 					}
@@ -99,20 +105,18 @@
 				alert('网络错误');
 			},
 			complete: function() {
-				unlockUI();
+				lockUI(false);
 			}
 		});
 	}
 
-	function lockUI() {
-		$('#txt_user').prop('readOnly', true);
-		$('#txt_pwd').prop('readOnly', true);
-		$('#btn_submit').prop('disabled', true);
+	function lockBtn(val) {
+		$('#btn_submit').prop('disabled', val);
 	}
-	function unlockUI() {
-		$('#btn_submit').prop('disabled', false);
-		$('#txt_user').prop('readOnly', false);
-		$('#txt_pwd').prop('readOnly', false);
+	function lockUI(val) {
+		lockBtn(val);
+		$('#txt_user').prop('readOnly', val);
+		$('#txt_pwd').prop('readOnly', val);
 	}
 
 
@@ -132,7 +136,12 @@
 			return;
 		}
 
-		lockUI();
+		if (!powParam || user != powUser) {
+			getInfo(user);
+			return;
+		}
+
+		lockUI(true);
 
 		// submiting ...
 		console.log('MD5(%s . %s) 重复 %sM 次', pwd, powParam.salt, powParam.turn);

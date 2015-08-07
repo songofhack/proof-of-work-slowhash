@@ -6,12 +6,12 @@
 	<script src="//lib.sinaapp.com/js/jquery/1.9.1/jquery-1.9.1.min.js"></script>
 	<script src="md5.js"></script>
 	<style>
-		.warn_user_ok, .warn_user_bad {
+		.tip_user_ok, .tip_user_bad {
 			font-size: 12px;
 			color: green;
 			display: none;
 		}
-		.warn_user_bad {
+		.tip_user_bad {
 			color: red;
 		}
 	</style>
@@ -21,8 +21,8 @@
 		<h1>注册页面</h1>
 		<div>
 			用户: <input name="user" id="txt_user" type="text" maxlength="16" />
-			<span class="warn_user_ok">可用</span>
-			<span class="warn_user_bad">已被注册</span>
+			<span class="tip_user_ok">可用</span>
+			<span class="tip_user_bad">已被注册</span>
 		</div>
 		<div>
 			密码: <input name="pwd" id="txt_pwd" type="password" />
@@ -52,8 +52,11 @@
 	// 用户名检测
 	//
 	function checkUser(user) {
+		lockBtn(true);
+
 		$.ajax({
 			url: 'ajax_checkname',
+			dataType: 'json',
 			data: {
 				'user': user
 			},
@@ -62,23 +65,23 @@
 				if (curr != user) {
 					return;
 				}
-				if (data == 'ok') {
-					$('.warn_user_ok').show();
-					$('.warn_user_bad').hide();
-					$('#btn_submit').prop('disabled', false);
+				if (data.success) {
+					$('.tip_user_ok').show();
+					$('.tip_user_bad').hide();
+					lockBtn(false);
 				} else {
-					$('.warn_user_ok').hide();
-					$('.warn_user_bad').show();
-					$('#btn_submit').prop('disabled', true);
+					$('.tip_user_ok').hide();
+					$('.tip_user_bad').show();
+					lockBtn(true);
 				}
 			}
 		});
 	}
 
 	$('#txt_user').blur(function() {
+		if (this.readOnly) return;
 		if (this.value) {
 			checkUser(this.value);
-			$('#btn_submit').prop('disabled', true);
 		}
 	});
 
@@ -88,40 +91,38 @@
 	function registry(param) {
 		$.ajax({
 			url: 'ajax_reg',
+			dataType: 'json',
 			data: param,
 			success: function(data) {
-				switch (data) {
-				case 'ok':
-					alert('注册成功');
+				if (!data.success) {
+					if (data.reason == 'registered') {
+						alert('该用户已被注册');
+						$('#txt_user').focus();
+					} else {
+						alert(data.reason);
+					}
 					return;
-				case 'registered':
-					alert('该用户已被注册');
-					break;
-				default:
-					alert(data);
-					break;
 				}
+				alert('注册成功');
+				location.href = '/';
 			},
 			error: function() {
 				alert('网络错误');
 			},
 			complete: function() {
-				unlockUI();
+				lockUI(false);
 			}
 		});
 	}
 
-	function lockUI() {
-		$('#txt_user').prop('readOnly', true);
-		$('#txt_pwd').prop('readOnly', true);
-		$('#btn_submit').prop('disabled', true);
+	function lockBtn(val) {
+		$('#btn_submit').prop('disabled', val);
 	}
-	function unlockUI() {
-		$('#btn_submit').prop('disabled', false);
-		$('#txt_user').prop('readOnly', false);
-		$('#txt_pwd').prop('readOnly', false);
+	function lockUI(val) {
+		lockBtn(val);
+		$('#txt_user').prop('readOnly', val);
+		$('#txt_pwd').prop('readOnly', val);
 	}
-
 
 
 	function randStr() {
@@ -142,7 +143,7 @@
 			return;
 		}
 
-		lockUI();
+		lockUI(true);
 
 		// 加密时间
 		// 该时间短内反复 Hash。回调中 data.turn 指示 Hash 次数

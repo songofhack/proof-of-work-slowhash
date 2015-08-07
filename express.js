@@ -43,10 +43,12 @@ app.get('/ajax_checkname', function(req, res) {
 	if (!user) {
 		return res.send('invalid param');
 	}
+
 	if (hasRecord(user)) {
-		return res.send('registered');
+		res.send({success: false});
+	} else {
+		res.send({success: true});
 	}
-	return res.send('ok');
 });
 
 
@@ -101,7 +103,7 @@ app.get('/ajax_reg', function(req, res) {
 
 	console.log('new user: %s', user);
 
-	return res.send('ok');
+	return res.send({success: true});
 });
 
 
@@ -111,11 +113,7 @@ app.get('/ajax_reg', function(req, res) {
 app.get('/ajax_getinfo', function(req, res) {
 	var user = req.query['user'];
 	if (!user) {
-		res.send({
-			success: false,
-			reason: 'invalid param'
-		});
-		return;
+		return res.send('invalid param');
 	}
 
 	var record = readRecord(user);
@@ -153,9 +151,7 @@ app.get('/ajax_login', function(req, res) {
 	if (record['pwd'] == pwd) {
 		record['login_ok']++;
 		record['last_addr'] = req.connection.remoteAddress;
-		res.send({
-			success: true
-		});
+		res.send({success: true});
 	}
 	else {
 		record['login_fail']++;

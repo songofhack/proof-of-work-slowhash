@@ -185,18 +185,6 @@ function hex(val) {
     return ('00000000' + (val >>> 0).toString(16)).slice(-8);
 }
 
-
-function run_by_time(time) {
-
-}
-
-
-function run_by_turn(param) {
-
-}
-
-
-
 self.onmessage = function(e) {
     var data = e.data;
     var type = data.type;
